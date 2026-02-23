@@ -5,7 +5,7 @@ White-box unit testing examples.
 """
 import unittest
 
-from white_box.class_exercises import divide, get_grade, is_even, is_triangle
+from class_exercises import divide, get_grade, is_even, is_triangle
 
 
 class TestWhiteBox(unittest.TestCase):
