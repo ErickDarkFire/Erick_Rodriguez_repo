@@ -40,8 +40,6 @@ from class_exercises import (
     calculate_order_total,
     calculate_items_shipping_cost,
     validate_login,
-)
-from class_exercises import (
     verify_age,
     categorize_product,
     validate_email,
@@ -50,9 +48,14 @@ from class_exercises import (
     validate_date,
     check_flight_eligibility,
     validate_url,
+    calculate_quantity_discount,
+    check_file_size,
+    check_loan_eligibility,
+    calculate_shipping_cost,
+    grade_quiz,
+    authenticate_user,
+    get_weather_advisory,
 )
-
-# from class_exercises import calculate_quantity_discount, check_file_size, check_loan_eligibility, calculate_shipping_cost, grade_quiz, authenticate_user, get_weather_advisory
 
 """
 White-box unittest class.
@@ -506,7 +509,7 @@ class TestCelsiusToFahrenheit(unittest.TestCase):
 
 
 class TestValidateCreditCard(unittest.TestCase):
-    # 10---------------------------------------------------------------
+    # 11---------------------------------------------------------------
     def test_validate_credit_card_without_enough_length(self):
         """
         Validate a credit card number without enough length
@@ -530,3 +533,374 @@ class TestValidateCreditCard(unittest.TestCase):
         Validate a credit card number with a chars
         """
         self.assertEqual(validate_credit_card("abcdefghijklmno"), "Invalid Card")
+
+
+class TestValidateDate(unittest.TestCase):
+    # 12---------------------------------------------------------------
+    def test_validate_date_valid_date(self):
+        """
+        Validate a correct date within valid ranges
+        """
+        self.assertEqual(validate_date(2024, 5, 20), "Valid Date")
+
+    def test_validate_date_year_below_range(self):
+        """
+        Validate a date with year below allowed range
+        """
+        self.assertEqual(validate_date(1800, 5, 20), "Invalid Date")
+
+    def test_validate_date_year_above_range(self):
+        """
+        Validate a date with year above allowed range
+        """
+        self.assertEqual(validate_date(2200, 5, 20), "Invalid Date")
+
+    def test_validate_date_month_below_range(self):
+        """
+        Validate a date with invalid month
+        """
+        self.assertEqual(validate_date(2024, 0, 10), "Invalid Date")
+
+    def test_validate_date_month_above_range(self):
+        """
+        Validate a date with invalid month
+        """
+        self.assertEqual(validate_date(2024, 13, 10), "Invalid Date")
+
+    def test_validate_date_day_below_range(self):
+        """
+        Validate a date with invalid day
+        """
+        self.assertEqual(validate_date(2024, 5, 0), "Invalid Date")
+
+    def test_validate_date_day_above_range(self):
+        """
+        Validate a date with invalid day
+        """
+        self.assertEqual(validate_date(2024, 5, 32), "Invalid Date")
+
+    def test_validate_date_non_existent(self):
+        """
+        Validate a non-existent date
+        """
+        self.assertEqual(validate_date(2024, 2, 30), "Valid Date")
+
+
+class TestCheckFlightEligibility(unittest.TestCase):
+    # 13---------------------------------------------------------------
+    def test_check_flight_eligibility_valid_age(self):
+        """
+        Passenger with valid age and not frequent flyer
+        """
+        self.assertEqual(check_flight_eligibility(30, False), "Eligible to Book")
+
+    def test_check_flight_eligibility_frequent_flyer(self):
+        """
+        Passenger with invalid age but frequent flyer
+        """
+        self.assertEqual(check_flight_eligibility(70, True), "Eligible to Book")
+
+    def test_check_flight_eligibility_not_eligible(self):
+        """
+        Passenger with invalid age and not frequent flyer
+        """
+        self.assertEqual(check_flight_eligibility(16, False), "Not Eligible to Book")
+
+    def test_check_flight_eligibility_lower_bound(self):
+        """
+        Passenger at minimum eligible age
+        """
+        self.assertEqual(check_flight_eligibility(18, False), "Eligible to Book")
+
+    def test_check_flight_eligibility_upper_bound(self):
+        """
+        Passenger at maximum eligible age
+        """
+        self.assertEqual(check_flight_eligibility(65, False), "Eligible to Book")
+
+
+class TestValidateURL(unittest.TestCase):
+    # 14---------------------------------------------------------------
+    def test_validate_url_http_valid_length(self):
+        """
+        Validate a valid HTTP URL within length
+        """
+        self.assertEqual(validate_url("http://example.com"), "Valid URL")
+
+    def test_validate_url_https_valid(self):
+        """
+        Validate a valid HTTPS URL
+        """
+        self.assertEqual(validate_url("https://example.com"), "Valid URL")
+
+    def test_validate_url_http_exceeds_length(self):
+        """
+        Validate an HTTP URL that exceeds max length
+        """
+        long_url = "http://" + "a" * 300
+        self.assertEqual(validate_url(long_url), "Invalid URL")
+
+    def test_validate_url_https_exceeds_length(self):
+        """
+        Validate an HTTPS URL that exceeds max length
+        """
+        long_url = "https://" + "a" * 300
+        self.assertEqual(validate_url(long_url), "Valid URL")
+
+    def test_validate_url_without_protocol(self):
+        """
+        Validate a URL without protocol
+        """
+        self.assertEqual(validate_url("www.example.com"), "Invalid URL")
+
+
+class TestCalculateQuantityDiscount(unittest.TestCase):
+    # 15---------------------------------------------------------------
+    def test_quantity_discount_no_discount_lower_bound(self):
+        """
+        Quantity at lower bound for no discount
+        """
+        self.assertEqual(calculate_quantity_discount(1), "No Discount")
+
+    def test_quantity_discount_no_discount_upper_bound(self):
+        """
+        Quantity at upper bound for no discount
+        """
+        self.assertEqual(calculate_quantity_discount(5), "No Discount")
+
+    def test_quantity_discount_five_percent_lower_bound(self):
+        """
+        Quantity at lower bound for 5 percent discount
+        """
+        self.assertEqual(calculate_quantity_discount(6), "5% Discount")
+
+    def test_quantity_discount_five_percent_upper_bound(self):
+        """
+        Quantity at upper bound for 5 percent discount
+        """
+        self.assertEqual(calculate_quantity_discount(10), "5% Discount")
+
+    def test_quantity_discount_ten_percent(self):
+        """
+        Quantity greater than 10
+        """
+        self.assertEqual(calculate_quantity_discount(20), "10% Discount")
+
+    def test_quantity_discount_invalid_quantity(self):
+        """
+        Quantity below valid range
+        """
+        self.assertEqual(calculate_quantity_discount(0), "10% Discount")
+
+
+class TestCheckFileSize(unittest.TestCase):
+    # 16---------------------------------------------------------------
+    def test_file_size_zero_bytes(self):
+        """
+        File size at minimum allowed value
+        """
+        self.assertEqual(check_file_size(0), "Valid File Size")
+
+    def test_file_size_valid_middle_value(self):
+        """
+        File size within valid range
+        """
+        self.assertEqual(check_file_size(512000), "Valid File Size")
+
+    def test_file_size_maximum_allowed(self):
+        """
+        File size at maximum allowed value
+        """
+        self.assertEqual(check_file_size(1048576), "Valid File Size")
+
+    def test_file_size_exceeds_limit(self):
+        """
+        File size exceeds maximum allowed
+        """
+        self.assertEqual(check_file_size(1048577), "Invalid File Size")
+
+    def test_file_size_negative(self):
+        """
+        File size is negative
+        """
+        self.assertEqual(check_file_size(-1), "Invalid File Size")
+
+
+class TestCheckLoanEligibility(unittest.TestCase):
+    # 17---------------------------------------------------------------
+    def test_loan_not_eligible_low_income(self):
+        """
+        Income below minimum required
+        """
+        self.assertEqual(check_loan_eligibility(25000, 800), "Not Eligible")
+
+    def test_loan_standard_mid_income_high_credit(self):
+        """
+        Medium income with high credit score
+        """
+        self.assertEqual(check_loan_eligibility(45000, 720), "Standard Loan")
+
+    def test_loan_secured_mid_income_low_credit(self):
+        """
+        Medium income with low credit score
+        """
+        self.assertEqual(check_loan_eligibility(45000, 650), "Secured Loan")
+
+    def test_loan_premium_high_income_high_credit(self):
+        """
+        High income with excellent credit score
+        """
+        self.assertEqual(check_loan_eligibility(80000, 780), "Premium Loan")
+
+    def test_loan_standard_high_income_low_credit(self):
+        """
+        High income with credit score not high enough for premium
+        """
+        self.assertEqual(check_loan_eligibility(80000, 720), "Standard Loan")
+
+    def test_loan_income_lower_bound(self):
+        """
+        Income at lower boundary of medium range
+        """
+        self.assertEqual(check_loan_eligibility(30000, 700), "Secured Loan")
+
+    def test_loan_income_upper_bound(self):
+        """
+        Income at upper boundary of medium range
+        """
+        self.assertEqual(check_loan_eligibility(60000, 710), "Standard Loan")
+
+
+class TestCalculateShippingCost(unittest.TestCase):
+    # 18---------------------------------------------------------------
+    def test_shipping_cost_small_package(self):
+        """
+        Small package with minimal weight and dimensions
+        """
+        self.assertEqual(calculate_shipping_cost(1, 10, 10, 10), 5)
+
+    def test_shipping_cost_medium_package(self):
+        """
+        Medium package within allowed weight and dimensions
+        """
+        self.assertEqual(calculate_shipping_cost(3, 20, 20, 20), 10)
+
+    def test_shipping_cost_heavy_package(self):
+        """
+        Package with weight exceeding medium range
+        """
+        self.assertEqual(calculate_shipping_cost(6, 20, 20, 20), 20)
+
+    def test_shipping_cost_large_dimensions(self):
+        """
+        Package with dimensions exceeding allowed limits
+        """
+        self.assertEqual(calculate_shipping_cost(2, 40, 20, 20), 20)
+
+    def test_shipping_cost_medium_upper_weight_boundary(self):
+        """
+        Medium package at upper weight boundary
+        """
+        self.assertEqual(calculate_shipping_cost(5, 30, 30, 30), 10)
+
+
+class TestGradeQuiz(unittest.TestCase):
+    # 19---------------------------------------------------------------
+    def test_quiz_pass(self):
+        """
+        Quiz passed with high correct answers and few incorrect
+        """
+        self.assertEqual(grade_quiz(8, 1), "Pass")
+
+    def test_quiz_conditional_pass(self):
+        """
+        Quiz conditionally passed
+        """
+        self.assertEqual(grade_quiz(5, 3), "Conditional Pass")
+
+    def test_quiz_fail_low_correct(self):
+        """
+        Quiz failed due to low correct answers
+        """
+        self.assertEqual(grade_quiz(4, 1), "Fail")
+
+    def test_quiz_fail_too_many_incorrect(self):
+        """
+        Quiz failed due to too many incorrect answers
+        """
+        self.assertEqual(grade_quiz(7, 4), "Fail")
+
+    def test_quiz_pass_lower_boundary(self):
+        """
+        Quiz pass at minimum correct and incorrect limits
+        """
+        self.assertEqual(grade_quiz(7, 2), "Pass")
+
+
+class TestAuthenticateUser(unittest.TestCase):
+    # 20---------------------------------------------------------------
+    def test_authenticate_admin(self):
+        """
+        Authenticate admin with correct credentials
+        """
+        self.assertEqual(authenticate_user("admin", "admin123"), "Admin")
+
+    def test_authenticate_valid_user(self):
+        """
+        Authenticate regular user with valid credentials length
+        """
+        self.assertEqual(authenticate_user("usuario", "password123"), "User")
+
+    def test_authenticate_invalid_short_username(self):
+        """
+        Authentication fails due to short username
+        """
+        self.assertEqual(authenticate_user("usr", "password123"), "Invalid")
+
+    def test_authenticate_invalid_short_password(self):
+        """
+        Authentication fails due to short password
+        """
+        self.assertEqual(authenticate_user("usuario", "pass"), "Invalid")
+
+    def test_authenticate_invalid_credentials(self):
+        """
+        Credentials not admin but meet length requirements
+        """
+        self.assertEqual(authenticate_user("adminx", "admin1234"), "User")
+
+
+class TestGetWeatherAdvisory(unittest.TestCase):
+    # 21---------------------------------------------------------------
+    def test_get_weather_advisory_no1(self):
+        """
+        Weather advisory with temperature less than 30 and humidity less than 70
+        """
+        self.assertEqual(get_weather_advisory(29, 69), "No Specific Advisory")
+
+    def test_get_weather_advisory_no2(self):
+        """
+        Weather advisory with temperature less than 0
+        """
+        self.assertEqual(get_weather_advisory(-1, 69), "Low Temperature. Bundle Up!")
+
+    def test_get_weather_advisory_no3(self):
+        """
+        Weather advisory with temperature greater than 30 and humidity less than 70
+        """
+        self.assertEqual(get_weather_advisory(31, 69), "No Specific Advisory")
+
+    def test_get_weather_advisory_no4(self):
+        """
+        Weather advisory with temperature less than 30 and humidity greater than 70
+        """
+        self.assertEqual(get_weather_advisory(29, 71), "No Specific Advisory")
+
+    def test_get_weather_advisory_no5(self):
+        """
+        Weather advisory with temperature greater than 30 and humidity greater than 70
+        """
+        self.assertEqual(
+            get_weather_advisory(31, 71),
+            "High Temperature and Humidity. Stay Hydrated.",
+        )
