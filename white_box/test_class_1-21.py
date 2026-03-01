@@ -58,7 +58,7 @@ from class_exercises import (
 )
 
 """
-White-box unittest class.
+White-box unittest class 1 to 21
 """
 
 
@@ -313,6 +313,15 @@ class TestCalculateItemsShippingCost(unittest.TestCase):
         order = [{"weight": 5}]
         sm = "hola"
 
+        """
+        Forma alternativa:
+        error = False
+        try:
+            calculate_items_shipping_cost(order, sm)
+        catch:
+            error = True
+        self.assertEqual(error,True)
+        """
         with self.assertRaises(ValueError):
             calculate_items_shipping_cost(order, sm)
 
