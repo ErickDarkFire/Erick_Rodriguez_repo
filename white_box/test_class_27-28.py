@@ -8,6 +8,8 @@ from unittest.mock import patch
 
 from class_exercises import BankAccount, BankingSystem, Product, ShoppingCart
 
+from book_store import Book, BookStore
+
 
 class TestBankAccount(unittest.TestCase):
     # 27---------------------------------------------------------------
@@ -317,3 +319,129 @@ class TestShoppingCart(unittest.TestCase):
         """
         self.cart.remove_product(self.product, 1)
         self.assertEqual(self.cart.items, [])
+
+
+class TestBook(unittest.TestCase):
+    # 29---------------------------------------------------------------
+    def setUp(self):
+        """
+        Function that runs at the beginning of each function.
+        """
+        self.book = Book("Clean Code", "Robert Martin", 50.0, 10)
+        self.assertEqual(self.book.title, "Clean Code")
+        self.assertEqual(self.book.author, "Robert Martin")
+        self.assertEqual(self.book.price, 50.0)
+        self.assertEqual(self.book.quantity, 10)
+
+    @patch("builtins.print")
+    def test_display(self, mock_print):
+        """
+        Check display function
+        """
+        self.book.display()
+
+        mock_print.assert_any_call(f"Title: {self.book.title}")
+        mock_print.assert_any_call(f"Author: {self.book.author}")
+        mock_print.assert_any_call(f"Price: ${self.book.price}")
+        mock_print.assert_any_call(f"Quantity: {self.book.quantity}")
+
+
+class TestBookStore(unittest.TestCase):
+    # 29---------------------------------------------------------------
+    def setUp(self):
+        """
+        Function that runs at the beginning of each function.
+        """
+        self.store = BookStore()
+        self.book = Book("Clean Code", "Robert Martin", 50.0, 10)
+
+        self.assertEqual(self.store.books, [])
+
+    @patch("builtins.print")
+    def test_add_book(self, mock_print):
+        """
+        Check add_book function
+        """
+        self.store.add_book(self.book)
+
+        self.assertEqual(len(self.store.books), 1)
+        self.assertEqual(self.store.books[0], self.book)
+
+        mock_print.assert_called_once_with(
+            f"Book '{self.book.title}' added to the store."
+        )
+
+    @patch("builtins.print")
+    def test_display_books_empty(self, mock_print):
+        """
+        Check display_books when store is empty
+        """
+        self.store.display_books()
+
+        mock_print.assert_called_once_with("No books in the store.")
+
+    @patch("builtins.print")
+    def test_display_books_with_books(self, mock_print):
+        """
+        Check display_books when store has books
+        """
+        self.store.add_book(self.book)
+
+        with patch.object(Book, "display") as mock_display:
+            self.store.display_books()
+
+            mock_print.assert_any_call("Books available in the store:")
+            mock_display.assert_called_once()
+
+    @patch("builtins.print")
+    def test_search_book_not_found(self, mock_print):
+        """
+        Check search_book when book is not found
+        """
+        self.store.search_book("Python")
+
+        mock_print.assert_called_once_with("No book found with title 'Python'.")
+
+    @patch("builtins.print")
+    def test_search_book_found(self, mock_print):
+        """
+        Check search_book when book exists
+        """
+        self.store.add_book(self.book)
+
+        with patch.object(Book, "display") as mock_display:
+            self.store.search_book("Clean Code")
+
+            mock_print.assert_any_call("Found 1 book(s) with title 'Clean Code':")
+            mock_display.assert_called_once()
+
+    @patch("builtins.print")
+    def test_search_book_case_insensitive(self, mock_print):
+        """
+        Check search_book ignoring case
+        """
+        self.store.add_book(self.book)
+
+        with patch.object(Book, "display") as mock_display:
+            self.store.search_book("clean code")
+
+            mock_print.assert_any_call("Found 1 book(s) with title 'clean code':")
+            mock_display.assert_called_once()
+
+
+def test_search_multiple_books(self):
+    """
+    Search when multiple books match the title
+    """
+    b1 = Book("Clean Code", "Robert Martin", 50, 5)
+    b2 = Book("Clean Code", "Someone Else", 40, 3)
+
+    self.store.add_book(b1)
+    self.store.add_book(b2)
+
+    with patch("builtins.print") as mock_print:
+        with patch.object(Book, "display") as mock_display:
+            self.store.search_book("Clean Code")
+
+            mock_print.assert_any_call("Found 2 book(s) with title 'Clean Code':")
+            self.assertEqual(mock_display.call_count, 2)
