@@ -11,7 +11,7 @@ from selenium.webdriver.support import expected_conditions as EC
 @given("I am on the Google homepage")
 def step_impl(context):
     options = Options()
-    options.add_argument("--headless=new")  # Si no usas Xvfb, o para mayor estabilidad
+    # options.add_argument("--headless=new")  # Si no usas Xvfb, o para mayor estabilidad
     options.add_argument("--no-sandbox")
     options.add_argument("--disable-dev-shm-usage")
     options.add_argument("--window-size=1920,1080")
@@ -20,10 +20,20 @@ def step_impl(context):
     options.add_argument(
         "user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36"
     )
-
     context.driver = webdriver.Chrome(options=options)
     context.driver.maximize_window()
     context.driver.get("https://www.google.com")
+
+    # Bypass de Cookies para Google (común en servidores de Europa/USA)
+    try:
+        # Busca el botón de "Aceptar todo" por texto o ID
+        # Google cambia el ID, pero "L2AGLb" es común para el botón de aceptar
+        cookie_button = WebDriverWait(context.driver, 5).until(
+            EC.element_to_be_clickable((By.ID, "L2AGLb"))
+        )
+        cookie_button.click()
+    except:
+        pass  # Si no aparece, seguimos adelante
 
 
 @when('I search for "{query}" and enter the first result')
@@ -76,42 +86,43 @@ def step_impl(context, section_name):
 
         suggestion.click()
 
-    # --- LÓGICA PARA UVM ---
+    # --- LÓGICA PARA UVM (Sustituye tu IF anterior con este) ---
     elif "uvm" in context.current_university:
-        # 1. Clic en el icono de la lupa (SVG con ID icon-search)
+        # Aseguramos tamaño de escritorio para que el ID aparezca
+        context.driver.set_window_size(1920, 1080)
+
+        # 1. Clic en la lupa
         try:
+            # Esperamos a que el SVG sea visible
             search_trigger = wait.until(
                 EC.element_to_be_clickable((By.ID, "icon-search"))
             )
             search_trigger.click()
         except:
-            # Respaldo por si el SVG no recibe el clic directamente
+            # Si el clic normal falla, forzamos con JS
             trigger = context.driver.find_element(By.ID, "icon-search")
             context.driver.execute_script("arguments[0].click();", trigger)
 
-        # 2. Localizar el textarea de búsqueda
-        # Usamos el ID 'buscartxt' que nos proporcionaste
+        # 2. Escribir en el textarea
         search_input = wait.until(
             EC.visibility_of_element_located((By.ID, "buscartxt"))
         )
-
         search_input.clear()
         search_input.send_keys(section_name + Keys.RETURN)
 
-        # 3. Esperar y dar clic en el resultado específico (gs-title)
-        # Usamos un selector que busque el enlace que contiene el texto de Carreras/Licenciaturas
+        # 3. Clic en el resultado específico de Google Search (gs-title)
+        # Esto es lo que faltaba en tu versión anterior para que fuera exitosa
         try:
             result_link = wait.until(
                 EC.element_to_be_clickable((By.CSS_SELECTOR, "a.gs-title"))
             )
             result_link.click()
 
-            # Marcamos que ya navegamos con éxito para que el @then no falle
+            # ACTIVAMOS EL FLAG para que el @then sepa que ya terminamos
             context.skip_results_list = True
-            print("Navegación exitosa a la oferta académica de UVM.")
 
         except Exception as e:
-            print(f"No se pudo encontrar el resultado específico en UVM: {e}")
+            print(f"Error al buscar el link final en UVM: {e}")
 
 
 @then("I should see a list of available programs")
