@@ -11,6 +11,10 @@ from selenium.webdriver.support import expected_conditions as EC
 @given("I am on the Google homepage")
 def step_impl(context):
     options = Options()
+    options.add_argument("--headless=new")  # Si no usas Xvfb, o para mayor estabilidad
+    options.add_argument("--no-sandbox")
+    options.add_argument("--disable-dev-shm-usage")
+    options.add_argument("--window-size=1920,1080")
     options.add_argument("--disable-blink-features=AutomationControlled")
     # User-agent para evitar que las unis bloqueen el tráfico de "bots"
     options.add_argument(
