@@ -1,0 +1,35 @@
+Erick Eduardo Rodriguez Gomez - 753535
+
+Guia de Ejecucion de Pruebas Selenium con Behave
+Para ejecutar las pruebas de forma local o entender el proceso del flujo de trabajo automatizado, siga estos pasos:
+
+Requisitos Previos
+Python 3.10: Es la versión configurada para garantizar la compatibilidad.
+
+Google Chrome: Debe estar instalado en el sistema.
+
+Dependencias: Es necesario instalar los paquetes base mediante el comando:
+python -m pip install behave selenium
+
+Configuracion del Entorno
+Si se encuentra en un entorno Linux sin interfaz gráfica (como el servidor de CI), se requiere el uso de Xvfb para emular una pantalla con una resolución de 1920x1080x24, asegurando que los elementos del buscador de las universidades sean visibles y clickeables.
+
+Ejecucion de las Pruebas
+Existen dos formas de iniciar la ejecución dependiendo de su ubicación en la terminal:
+
+Desde la raiz del proyecto:
+Navegue a la carpeta donde se encuentran las definiciones de los pasos y ejecute:
+cd selenium && behave
+
+Comando alternativo de Python:
+Una vez situado dentro de la carpeta selenium, puede utilizar el siguiente comando para asegurar que se utilicen los módulos de la instalación de Python actual:
+python -m behave
+
+Automatizacion (GitHub Actions)
+El archivo de configuración selenium.yaml establece que las pruebas se ejecutarán automáticamente bajo las siguientes condiciones:
+
+Al realizar un Push a la rama main.
+
+Al abrir o actualizar un Pull Request.
+
+Esto garantiza que cualquier cambio en la lógica de navegación de las universidades (ITESO, TEC, UVM) sea validado antes de integrarse al código principal.
