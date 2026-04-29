@@ -1,1 +1,4 @@
 .checkstyle/
+__pycache__
+.coverage
+htmlcov
