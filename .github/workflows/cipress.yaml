@@ -1,0 +1,32 @@
+name: Cypress Tests
+on: [push, pull_request]
+
+jobs:
+  cypress-run:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Cypress run
+        uses: cypress-io/github-action@v6
+        with:
+          # Si necesitas que se inicie un servidor local antes de los tests:
+          # start: npm start
+          # wait-on: 'http://localhost:3000'
+
+          # Especificamos el navegador (Chrome es más estable para tus tests del Tec/CUCBA)
+          browser: chrome
+
+      # Opcional: Guardar capturas de pantalla y videos si algo falla
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: cypress-screenshots
+          path: cypress/screenshots
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: cypress-videos
+          path: cypress/videos

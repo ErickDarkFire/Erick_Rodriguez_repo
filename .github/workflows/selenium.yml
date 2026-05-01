@@ -13,20 +13,23 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.10"
-      - name: Install Python dependencies
-        run: python -m pip install behave selenium
+
       - name: Install Chrome
         run: |
           sudo apt-get update
           sudo apt-get install -y wget unzip xvfb
-          wget https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb
-          sudo apt install ./google-chrome-stable_current_amd64.deb
-      - name: Start Xvfb
+          # Descarga la versión estable oficial
+          wget -q https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb
+          sudo apt install -y ./google-chrome-stable_current_amd64.deb
+
+      - name: Install dependencies
         run: |
-          export DISPLAY=:99
-          Xvfb :99 -screen 0 1920x1080x24 &
+          python -m pip install behave selenium webdriver-manager
+          sudo apt-get update
+          sudo apt-get install -y xvfb
+
       - name: Run tests
         working-directory: ./selenium
         run: |
-          export DISPLAY=:99
-          behave
+          # xvfb-run maneja la pantalla virtual para que Chrome no necesite --headless
+          xvfb-run -a --server-args="-screen 0 1920x1080x24" python -m behave

@@ -1,0 +1,32 @@
+{
+  "name": "analisis_estatico",
+  "version": "1.0.0",
+  "description": "Pruebas de software",
+  "main": "cypress.config.js",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ErickDarkFire/Analisis_estatico.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/ErickDarkFire/Analisis_estatico/issues"
+  },
+  "homepage": "https://github.com/ErickDarkFire/Analisis_estatico#readme",
+  "devDependencies": {
+    "@badeball/cypress-cucumber-preprocessor": "^24.0.1",
+    "@bahmutov/cypress-esbuild-preprocessor": "^2.2.8",
+    "cypress": "^15.14.2",
+    "esbuild": "^0.28.0"
+  },
+  "scripts": {
+    "test": "cypress run --browser chrome"
+  },
+  "cypress-cucumber-preprocessor": {
+    "stepDefinitions": [
+      "cypress/support/step_definitions/**/*.{js,ts}",
+      "cypress/e2e/**/*.{js,ts}"
+    ]
+  }
+}
