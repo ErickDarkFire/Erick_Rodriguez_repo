@@ -103,50 +103,69 @@ def step_impl(context, section_name):
 
     # --- LÓGICA PARA UVM ---
     elif "uvm" in context.current_university:
-        # 1. Forzar tamaño y asegurar que estamos al inicio de la página
+        # 1. Configuración de entorno robusta
         context.driver.set_window_size(1920, 1080)
-        context.driver.execute_script("window.scrollTo(0, 0);")
-
-        # Espera de cortesía para que los scripts de la UVM terminen de cargar
-        import time
-
-        time.sleep(3)
-
-        wait = WebDriverWait(context.driver, 30)  # Aumentamos a 30 para el servidor
+        # Forzar recarga si es necesario para asegurar que los scripts se activen
+        wait = WebDriverWait(context.driver, 35)
         wait.until(EC.presence_of_element_located((By.TAG_NAME, "body")))
 
-        try:
-            # 2. Búsqueda por JavaScript Directo
-            # GitHub a veces no "ve" el SVG con XPath, pero JS siempre puede encontrarlo por ID
-            print("DEBUG: Intentando abrir buscador en UVM vía JS directo...")
+        # Pequeña pausa para que el JS dinámico de la página se asiente
+        import time
 
+        time.sleep(5)
+
+        try:
+            print("DEBUG: Iniciando búsqueda flexible de la lupa en UVM...")
+
+            # 2. JavaScript Flexible: Busca por ID, por clase o por atributo data
             context.driver.execute_script(
                 """
-                var icon = document.getElementById('icon-search');
-                if (icon) {
-                    // Disparar clic en el icono y en sus padres hasta el LI
-                    var current = icon;
-                    for (var i = 0; i < 3; i++) {
-                        if (current) {
-                            current.dispatchEvent(new MouseEvent('click', {bubbles: true}));
-                            current = current.parentElement;
-                        }
+                // Intentar varios selectores comunes para el botón de búsqueda en UVM
+                var selectors = [
+                    '#icon-search',
+                    '.icon-search',
+                    '[data-name="icon-search"]',
+                    '//li[contains(@class, "search")]',
+                    '//form[contains(@class, "search")]'
+                ];
+
+                var element = null;
+                for (var s of selectors) {
+                    if (s.startsWith('//')) {
+                        element = document.evaluate(s, document, null, XPathResult.FIRST_ORDERED_NODE_TYPE, null).singleNodeValue;
+                    } else {
+                        element = document.querySelector(s);
                     }
+                    if (element) {
+                        console.log('Elemento encontrado con: ' + s);
+                        break;
+                    }
+                }
+
+                if (element) {
+                    // Disparar clic con burbujeo para asegurar que el listener lo atrape
+                    var clickEvent = new MouseEvent('click', { 'view': window, 'bubbles': true, 'cancelable': true });
+                    element.dispatchEvent(clickEvent);
+
+                    // Si tiene un padre inmediato, también le damos clic por si acaso
+                    if (element.parentElement) element.parentElement.click();
                 } else {
-                    throw new Error('No se encontró el ID icon-search en el DOM');
+                    throw new Error('No se detectó ningún disparador de búsqueda compatible');
                 }
             """
             )
 
-            # 3. Verificar si el input apareció
+            # 3. Localizar el input (buscartxt)
+            # Usamos un selector más amplio por si el ID cambia en el servidor
             search_input = wait.until(
-                EC.visibility_of_element_located((By.ID, "buscartxt"))
+                EC.element_to_be_clickable(
+                    (By.CSS_SELECTOR, "input#buscartxt, textarea#buscartxt, .buscartxt")
+                )
             )
             search_input.clear()
             search_input.send_keys(section_name + Keys.RETURN)
-            print("DEBUG: Texto enviado al buscador de UVM.")
 
-            # 4. Clic en el resultado final (Google Search interno de UVM)
+            # 4. Clic en el resultado final
             result_link = wait.until(
                 EC.element_to_be_clickable((By.CSS_SELECTOR, "a.gs-title"))
             )
@@ -154,11 +173,13 @@ def step_impl(context, section_name):
             context.skip_results_list = True
 
         except Exception as e:
-            # Si falla, guardamos el HTML y captura para ver el error real en los artefactos de GitHub
-            context.driver.save_screenshot("uvm_timeout_debug.png")
-            with open("uvm_dom_debug.html", "w", encoding="utf-8") as f:
+            # Captura de pantalla y volcado de HTML para diagnóstico
+            context.driver.save_screenshot("uvm_fatal_error.png")
+            with open("uvm_debug_source.html", "w", encoding="utf-8") as f:
                 f.write(context.driver.page_source)
-            print(f"DEBUG: Error crítico en UVM: {e}")
+            print(
+                f"DEBUG: Fallo total en UVM. Revisa 'uvm_debug_source.html' en los artefactos. Error: {e}"
+            )
             raise e
 
 
