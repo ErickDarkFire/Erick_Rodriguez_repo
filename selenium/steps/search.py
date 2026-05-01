@@ -103,55 +103,63 @@ def step_impl(context, section_name):
 
     # --- LÓGICA PARA UVM ---
     elif "uvm" in context.current_university:
+        # 1. Forzar tamaño y asegurar que estamos al inicio de la página
         context.driver.set_window_size(1920, 1080)
-        wait = WebDriverWait(context.driver, 25)
+        context.driver.execute_script("window.scrollTo(0, 0);")
+
+        # Espera de cortesía para que los scripts de la UVM terminen de cargar
+        import time
+
+        time.sleep(3)
+
+        wait = WebDriverWait(context.driver, 30)  # Aumentamos a 30 para el servidor
         wait.until(EC.presence_of_element_located((By.TAG_NAME, "body")))
 
         try:
-            # 1. Localizar el LI que contiene el SVG
-            # Usamos el local-name para evitar problemas de namespace en el servidor
-            xpath_li = "//li[descendant::*[local-name()='svg' and @id='icon-search']]"
-            search_trigger = wait.until(
-                EC.presence_of_element_located((By.XPATH, xpath_li))
-            )
+            # 2. Búsqueda por JavaScript Directo
+            # GitHub a veces no "ve" el SVG con XPath, pero JS siempre puede encontrarlo por ID
+            print("DEBUG: Intentando abrir buscador en UVM vía JS directo...")
 
-            # 2. Clic usando DispatchEvent (más robusto que .click())
             context.driver.execute_script(
                 """
-                var container = arguments[0];
-                var svg = container.querySelector('svg');
-
-                // Función para disparar un evento de clic real
-                function triggerClick(el) {
-                    var event = new MouseEvent('click', {
-                        view: window,
-                        bubbles: true,
-                        cancelable: true
-                    });
-                    el.dispatchEvent(event);
+                var icon = document.getElementById('icon-search');
+                if (icon) {
+                    // Disparar clic en el icono y en sus padres hasta el LI
+                    var current = icon;
+                    for (var i = 0; i < 3; i++) {
+                        if (current) {
+                            current.dispatchEvent(new MouseEvent('click', {bubbles: true}));
+                            current = current.parentElement;
+                        }
+                    }
+                } else {
+                    throw new Error('No se encontró el ID icon-search en el DOM');
                 }
-
-                // Intentamos en el LI y en el SVG
-                triggerClick(container);
-                if (svg) { triggerClick(svg); }
-            """,
-                search_trigger,
+            """
             )
 
-            print("DEBUG: Evento de clic disparado correctamente en UVM.")
+            # 3. Verificar si el input apareció
+            search_input = wait.until(
+                EC.visibility_of_element_located((By.ID, "buscartxt"))
+            )
+            search_input.clear()
+            search_input.send_keys(section_name + Keys.RETURN)
+            print("DEBUG: Texto enviado al buscador de UVM.")
+
+            # 4. Clic en el resultado final (Google Search interno de UVM)
+            result_link = wait.until(
+                EC.element_to_be_clickable((By.CSS_SELECTOR, "a.gs-title"))
+            )
+            context.driver.execute_script("arguments[0].click();", result_link)
+            context.skip_results_list = True
 
         except Exception as e:
-            print(f"DEBUG: Error en UVM: {e}")
-            # Si falla, tomamos captura para ver el estado de la página
-            context.driver.save_screenshot("uvm_error.png")
+            # Si falla, guardamos el HTML y captura para ver el error real en los artefactos de GitHub
+            context.driver.save_screenshot("uvm_timeout_debug.png")
+            with open("uvm_dom_debug.html", "w", encoding="utf-8") as f:
+                f.write(context.driver.page_source)
+            print(f"DEBUG: Error crítico en UVM: {e}")
             raise e
-
-        # 3. Esperar al input de búsqueda
-        search_input = wait.until(
-            EC.visibility_of_element_located((By.ID, "buscartxt"))
-        )
-        search_input.clear()
-        search_input.send_keys(section_name + Keys.RETURN)
 
 
 @then("I should see a list of available programs")
