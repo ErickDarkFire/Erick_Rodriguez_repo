@@ -6,6 +6,7 @@ from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 import os
+from selenium.common.exceptions import StaleElementReferenceException, TimeoutException
 
 
 @given("I am on the DuckDuckGo homepage")
@@ -133,34 +134,60 @@ def step_impl(context, section_name):
 
 @then("I should see a list of available programs")
 def step_impl(context):
-    wait = WebDriverWait(context.driver, 25)
+    wait = WebDriverWait(context.driver, 30)
 
-    # Definir selectores según la universidad detectada
+    # 1. Definir selectores (Aseguramos CUCBA)
     selectors = {
         "iteso": "a.gs-title",
         "unitec": "a.hs-search-results__title",
-        "cucba": ".view-content a, .search-results a",  # Selectores comunes en UdeG/Drupal
+        "cucba": "div.view-content a, div.search-results a, h3.title a",
     }
 
     current_selector = None
     for key in selectors:
-        if key in context.current_university:
+        if key in context.current_university.lower():
             current_selector = selectors[key]
             break
 
-    # Si no hay match, buscamos cualquier link que contenga el texto del resultado
     if not current_selector:
         current_selector = "a"
 
-    try:
-        # Esperamos a que el primer resultado sea visible
-        result_link = wait.until(
-            EC.presence_of_element_located((By.CSS_SELECTOR, current_selector))
-        )
+    # 2. Bucle de re-intento para manejar StaleElementReference
+    attempts = 0
+    while attempts < 3:
+        try:
+            # Volvemos a buscar el elemento en cada intento
+            result_link = wait.until(
+                EC.presence_of_element_located((By.CSS_SELECTOR, current_selector))
+            )
 
-        # Clic forzado por JS para evitar problemas de capas en el servidor
-        context.driver.execute_script("arguments[0].click();", result_link)
-        print("Éxito: Navegación al programa completada.")
+            # Forzamos scroll y clic por JS
+            context.driver.execute_script(
+                "arguments[0].scrollIntoView(true);", result_link
+            )
+            context.driver.execute_script("arguments[0].click();", result_link)
 
-    finally:
-        context.driver.quit()
+            print(
+                f"Éxito: Clic realizado en el resultado de {context.current_university}"
+            )
+            break  # Salimos del bucle si el clic funciona
+
+        except StaleElementReferenceException:
+            attempts += 1
+            print(
+                f"DEBUG: Elemento obsoleto (stale), reintentando búsqueda... ({attempts}/3)"
+            )
+            import time
+
+            time.sleep(1)  # Pausa mínima para que el DOM se asiente
+
+        except Exception as e:
+            print(f"DEBUG: Error inesperado en el paso final: {e}")
+            context.driver.save_screenshot("final_error_debug.png")
+            raise e
+
+    # Cerramos sesión después de una breve espera para ver la carga final
+    import time
+
+    time.sleep(2)
+    context.driver.quit()
