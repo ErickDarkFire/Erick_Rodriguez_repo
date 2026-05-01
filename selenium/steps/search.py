@@ -101,74 +101,113 @@ def step_impl(context, section_name):
         )
         suggestion.click()
 
+    # --- LÓGICA PARA UVM ---
     elif "uvm" in context.current_university:
         context.driver.set_window_size(1920, 1080)
+        wait = WebDriverWait(context.driver, 25)
         wait.until(EC.presence_of_element_located((By.TAG_NAME, "body")))
+
         try:
-            xpath_svg = "//*[local-name()='svg' and @id='icon-search']"
+            # 1. Localizar el LI que contiene el SVG
+            # Usamos el local-name para evitar problemas de namespace en el servidor
+            xpath_li = "//li[descendant::*[local-name()='svg' and @id='icon-search']]"
             search_trigger = wait.until(
-                EC.presence_of_element_located((By.XPATH, xpath_svg))
+                EC.presence_of_element_located((By.XPATH, xpath_li))
             )
 
+            # 2. Clic usando DispatchEvent (más robusto que .click())
             context.driver.execute_script(
                 """
-                var svgElement = arguments[0];
-                var evObj = document.createEvent('MouseEvents');
-                evObj.initEvent('click', true, true);
-                svgElement.dispatchEvent(evObj);
+                var container = arguments[0];
+                var svg = container.querySelector('svg');
 
-                // Por si el evento está en el padre (el <li> o <a>)
-                if (svgElement.parentElement) {
-                    svgElement.parentElement.click();
+                // Función para disparar un evento de clic real
+                function triggerClick(el) {
+                    var event = new MouseEvent('click', {
+                        view: window,
+                        bubbles: true,
+                        cancelable: true
+                    });
+                    el.dispatchEvent(event);
                 }
+
+                // Intentamos en el LI y en el SVG
+                triggerClick(container);
+                if (svg) { triggerClick(svg); }
             """,
                 search_trigger,
             )
+
+            print("DEBUG: Evento de clic disparado correctamente en UVM.")
+
         except Exception as e:
-            print(f"DEBUG: Error al intentar dar clic en el SVG: {e}")
-            try:
-                backup_icon = context.driver.find_element(By.CLASS_NAME, "icon-search")
-                context.driver.execute_script("arguments[0].click();", backup_icon)
-            except:
-                raise e
+            print(f"DEBUG: Error en UVM: {e}")
+            # Si falla, tomamos captura para ver el estado de la página
+            context.driver.save_screenshot("uvm_error.png")
+            raise e
+
+        # 3. Esperar al input de búsqueda
         search_input = wait.until(
             EC.visibility_of_element_located((By.ID, "buscartxt"))
         )
         search_input.clear()
         search_input.send_keys(section_name + Keys.RETURN)
-        try:
-            result_link = wait.until(
-                EC.element_to_be_clickable((By.CSS_SELECTOR, "a.gs-title"))
-            )
-            result_link.click()
-            context.skip_results_list = True
-        except:
-            pass
 
 
 @then("I should see a list of available programs")
 def step_impl(context):
-    wait = WebDriverWait(context.driver, 20)
+    wait = WebDriverWait(context.driver, 25)
+
+    # 1. Si ya terminamos en los pasos anteriores (Tec o UVM ya clicaron su link final)
     if (
         getattr(context, "skip_results_list", False)
         or "tec" in context.current_university
     ):
         wait.until(EC.presence_of_element_located((By.TAG_NAME, "body")))
+        print(f"Éxito: Navegación final confirmada para {context.current_university}")
         context.driver.quit()
         return
+
+    # 2. Definir selectores para las universidades que tienen lista de resultados intermedia
+    # Agregamos 'uvm' por si acaso, aunque normalmente el flag skip_results lo salta
     selectors = {
         "iteso": "a.gs-title",
         "unitec": ".hs-search-results__title, .search-result-item a",
+        "uvm": "a.gs-title",  # La UVM también usa Google Search Engine internamente
     }
-    current_selector = selectors.get(
-        next((k for k in selectors if k in context.current_university), "a")
-    )
+
+    # 3. Obtener el selector de forma segura
+    # Buscamos si alguna de las llaves del diccionario está en el nombre de la universidad
+    current_selector = None
+    for key in selectors:
+        if key in context.current_university:
+            current_selector = selectors[key]
+            break
+
+    # Si no encontramos un selector específico, usamos uno genérico (a) para evitar el error de 'None'
+    if not current_selector:
+        current_selector = "a"
+
     try:
+        # 4. Esperar y hacer clic en el resultado
         result_link = wait.until(
             EC.presence_of_element_located((By.CSS_SELECTOR, current_selector))
         )
+
+        # Clic por JS para máxima compatibilidad
         context.driver.execute_script("arguments[0].click();", result_link)
+
+        # Si se abre en pestaña nueva, cambiamos a ella
         if len(context.driver.window_handles) > 1:
             context.driver.switch_to.window(context.driver.window_handles[-1])
+
+        print(f"Éxito: Se navegó a la sección de {context.current_university}")
+
+    except Exception as e:
+        print(
+            f"DEBUG: No se encontró el link de resultados con el selector: {current_selector}"
+        )
+        context.driver.save_screenshot("final_step_error.png")
+        raise e
     finally:
         context.driver.quit()
