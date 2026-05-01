@@ -11,4 +11,8 @@ Feature: Google Search
 
   Examples:
   | Search          | Section           |
-  | UVM             | Carreras          |
+  | ITESO           | Carreras          |
+  | ITESO           | Posgrados         |
+  | ITESO           | Prepa             |
+  | Tec de monterrey| Campus profesional|
+  | CUCBA           | Carreras          |

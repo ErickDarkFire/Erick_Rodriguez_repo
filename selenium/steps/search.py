@@ -101,142 +101,66 @@ def step_impl(context, section_name):
         )
         suggestion.click()
 
-    # --- LÓGICA PARA UVM ---
-    elif "uvm" in context.current_university:
-        # 1. Configuración de entorno robusta
-        context.driver.set_window_size(1920, 1080)
-        # Forzar recarga si es necesario para asegurar que los scripts se activen
-        wait = WebDriverWait(context.driver, 35)
+    # --- LÓGICA PARA CUCBA ---
+    elif "cucba" in context.current_university:
+        # 1. Espera de carga y scroll al inicio
+        wait = WebDriverWait(context.driver, 30)
         wait.until(EC.presence_of_element_located((By.TAG_NAME, "body")))
-
-        # Pequeña pausa para que el JS dinámico de la página se asiente
-        import time
-
-        time.sleep(5)
+        context.driver.execute_script("window.scrollTo(0, 0);")
 
         try:
-            print("DEBUG: Iniciando búsqueda flexible de la lupa en UVM...")
-
-            # 2. JavaScript Flexible: Busca por ID, por clase o por atributo data
-            context.driver.execute_script(
-                """
-                // Intentar varios selectores comunes para el botón de búsqueda en UVM
-                var selectors = [
-                    '#icon-search',
-                    '.icon-search',
-                    '[data-name="icon-search"]',
-                    '//li[contains(@class, "search")]',
-                    '//form[contains(@class, "search")]'
-                ];
-
-                var element = null;
-                for (var s of selectors) {
-                    if (s.startsWith('//')) {
-                        element = document.evaluate(s, document, null, XPathResult.FIRST_ORDERED_NODE_TYPE, null).singleNodeValue;
-                    } else {
-                        element = document.querySelector(s);
-                    }
-                    if (element) {
-                        console.log('Elemento encontrado con: ' + s);
-                        break;
-                    }
-                }
-
-                if (element) {
-                    // Disparar clic con burbujeo para asegurar que el listener lo atrape
-                    var clickEvent = new MouseEvent('click', { 'view': window, 'bubbles': true, 'cancelable': true });
-                    element.dispatchEvent(clickEvent);
-
-                    // Si tiene un padre inmediato, también le damos clic por si acaso
-                    if (element.parentElement) element.parentElement.click();
-                } else {
-                    throw new Error('No se detectó ningún disparador de búsqueda compatible');
-                }
-            """
-            )
-
-            # 3. Localizar el input (buscartxt)
-            # Usamos un selector más amplio por si el ID cambia en el servidor
+            # 2. Localizar el input por ID (Drupal suele usar edit-search-block-form--2)
+            # Usamos un selector CSS que soporte el ID exacto que proporcionaste
             search_input = wait.until(
                 EC.element_to_be_clickable(
-                    (By.CSS_SELECTOR, "input#buscartxt, textarea#buscartxt, .buscartxt")
+                    (By.CSS_SELECTOR, "input#edit-search-block-form--2")
                 )
             )
-            search_input.clear()
-            search_input.send_keys(section_name + Keys.RETURN)
 
-            # 4. Clic en el resultado final
-            result_link = wait.until(
-                EC.element_to_be_clickable((By.CSS_SELECTOR, "a.gs-title"))
-            )
-            context.driver.execute_script("arguments[0].click();", result_link)
-            context.skip_results_list = True
+            # 3. Limpiar y escribir con un pequeño delay para asegurar el foco
+            search_input.clear()
+            search_input.click()
+            search_input.send_keys(section_name + Keys.RETURN)
+            print(f"DEBUG: Búsqueda '{section_name}' enviada correctamente en CUCBA.")
 
         except Exception as e:
-            # Captura de pantalla y volcado de HTML para diagnóstico
-            context.driver.save_screenshot("uvm_fatal_error.png")
-            with open("uvm_debug_source.html", "w", encoding="utf-8") as f:
-                f.write(context.driver.page_source)
-            print(
-                f"DEBUG: Fallo total en UVM. Revisa 'uvm_debug_source.html' en los artefactos. Error: {e}"
-            )
-            raise e
+            print(f"DEBUG: Selector de ID falló en CUCBA, intentando por nombre...")
+            # Plan B: Buscar por el atributo name que es search_block_form
+            search_input = context.driver.find_element(By.NAME, "search_block_form")
+            context.driver.execute_script("arguments[0].value = '';", search_input)
+            search_input.send_keys(section_name + Keys.RETURN)
 
 
 @then("I should see a list of available programs")
 def step_impl(context):
     wait = WebDriverWait(context.driver, 25)
 
-    # 1. Si ya terminamos en los pasos anteriores (Tec o UVM ya clicaron su link final)
-    if (
-        getattr(context, "skip_results_list", False)
-        or "tec" in context.current_university
-    ):
-        wait.until(EC.presence_of_element_located((By.TAG_NAME, "body")))
-        print(f"Éxito: Navegación final confirmada para {context.current_university}")
-        context.driver.quit()
-        return
-
-    # 2. Definir selectores para las universidades que tienen lista de resultados intermedia
-    # Agregamos 'uvm' por si acaso, aunque normalmente el flag skip_results lo salta
+    # Definir selectores según la universidad detectada
     selectors = {
         "iteso": "a.gs-title",
-        "unitec": ".hs-search-results__title, .search-result-item a",
-        "uvm": "a.gs-title",  # La UVM también usa Google Search Engine internamente
+        "unitec": "a.hs-search-results__title",
+        "cucba": ".view-content a, .search-results a",  # Selectores comunes en UdeG/Drupal
     }
 
-    # 3. Obtener el selector de forma segura
-    # Buscamos si alguna de las llaves del diccionario está en el nombre de la universidad
     current_selector = None
     for key in selectors:
         if key in context.current_university:
             current_selector = selectors[key]
             break
 
-    # Si no encontramos un selector específico, usamos uno genérico (a) para evitar el error de 'None'
+    # Si no hay match, buscamos cualquier link que contenga el texto del resultado
     if not current_selector:
         current_selector = "a"
 
     try:
-        # 4. Esperar y hacer clic en el resultado
+        # Esperamos a que el primer resultado sea visible
         result_link = wait.until(
             EC.presence_of_element_located((By.CSS_SELECTOR, current_selector))
         )
 
-        # Clic por JS para máxima compatibilidad
+        # Clic forzado por JS para evitar problemas de capas en el servidor
         context.driver.execute_script("arguments[0].click();", result_link)
+        print("Éxito: Navegación al programa completada.")
 
-        # Si se abre en pestaña nueva, cambiamos a ella
-        if len(context.driver.window_handles) > 1:
-            context.driver.switch_to.window(context.driver.window_handles[-1])
-
-        print(f"Éxito: Se navegó a la sección de {context.current_university}")
-
-    except Exception as e:
-        print(
-            f"DEBUG: No se encontró el link de resultados con el selector: {current_selector}"
-        )
-        context.driver.save_screenshot("final_step_error.png")
-        raise e
     finally:
         context.driver.quit()
